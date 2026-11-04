@@ -2,15 +2,17 @@ import  { useState } from 'react'
 import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
 import Loader from '../components/Loader'
-import Island from '../models/Island'
+import Island, { FIRST_STAGE_ANGLE } from '../models/Island'
 import Sky from '../models/Sky'
-import Bird from '../models/Bird'
 import Plane from '../models/Plane'
 import Homeinfo from '../components/Homeinfo'
 
 const Home = () => {
   const [isRotating, setIsRotating] = useState(false);
   const [currentStage, setCurrentStage] = useState(1);
+  const [showNavigationHint, setShowNavigationHint] = useState(true);
+
+  const handleInteraction = () => setShowNavigationHint(false);
 
   const adjustPLaneForScreenSize = () => {
     let screenScale, screenPosition;
@@ -43,8 +45,13 @@ const Home = () => {
 
   return (
       <section className='w-full h-screen relative'>
-        <div className='absolute top-28 left-0 right-0 z-10 flex items-center  justify-center'>
-          {currentStage && <Homeinfo currentStage = {currentStage}/> }
+        <div className='pointer-events-none absolute top-28 left-0 right-0 z-10 flex items-center justify-center'>
+          {currentStage && (
+            <Homeinfo
+              currentStage={currentStage}
+              showNavigationHint={showNavigationHint}
+            />
+          )}
         </div>
         <Canvas className={`w-full h-screen bg-transparent ${isRotating ? 'cursor-grabbing' : 'cursor-grab'}`}
         camera={{ near: 0.1, far:20000 }}
@@ -63,10 +70,11 @@ const Home = () => {
           <Island
             position = {islandPosition}
             scale = {islandScale}
-            rotation = {[0.1, 4.7077, 0]}
+            rotation = {[0.1, FIRST_STAGE_ANGLE, 0]}
             isRotating = {isRotating}
             setIsRotating = {setIsRotating}
             setCurrentStage = {setCurrentStage}
+            onInteraction = {handleInteraction}
           />
           <Plane
             position = {planePosition}

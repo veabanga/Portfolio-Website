@@ -6,13 +6,21 @@ Source: https://sketchfab.com/3d-models/foxs-islands-163b68e09fcc47618450150be77
 Title: Fox's islands
 */
 
-import { useRef, useEffect, useMemo } from 'react'
+import { useRef, useEffect, useMemo, useCallback } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import islandScene from '../assets/3d/MyFloatingCity.glb';
+import islandScene from '../assets/3d/FloatingCity.glb';
 import { a } from '@react-spring/three'
 
-const Island = ({ isRotating, setIsRotating, setCurrentStage, ...props}) => {
+const TWO_PI = 2 * Math.PI;
+const STAGE_ANGLE_STEP = Math.PI / 2;
+export const FIRST_STAGE_ANGLE = 4.7077 + Math.PI / 6;
+const STAGE_ANGLES = [0, 1, 2, 3].map(
+  (stageIndex) => (FIRST_STAGE_ANGLE - stageIndex * STAGE_ANGLE_STEP + TWO_PI) % TWO_PI
+);
+const STAGE_ANGLE_TOLERANCE = 0.22;
+
+const Island = ({ isRotating, setIsRotating, setCurrentStage, onInteraction, ...props}) => {
   const islandRef = useRef();
   const { gl, viewport } = useThree();
   const { nodes } = useGLTF(islandScene)
@@ -24,36 +32,68 @@ const Island = ({ isRotating, setIsRotating, setCurrentStage, ...props}) => {
   }, [nodes.mesh_0.material]);
 
   const lastX = useRef(0);
+  const pointerStart = useRef(null);
+  const targetRotation = useRef(null);
   const rotationSpeed = useRef(0);
   const dampingFactor = 0.95;
 
-//   what happens when we press the mouse down?
-  const handlePointerDown = (e) => {
+  const handlePointerDown = useCallback((e) => {
     e.stopPropagation();
     e.preventDefault();
     setIsRotating(true);
+    targetRotation.current = null;
+    onInteraction?.();
 
     const clientX = e.touches
     ? e.touches[0].clientX 
     : e.clientX
 
     lastX.current = clientX;
-  }
+    pointerStart.current = {
+      x: clientX,
+      y: e.clientY,
+      moved: false,
+      pointerType: e.pointerType,
+    };
+  }, [onInteraction, setIsRotating]);
 
-  const handlePointerUp = (e) => {
+  const handlePointerUp = useCallback((e) => {
     e.stopPropagation();
     e.preventDefault();
+    const start = pointerStart.current;
+    if (
+      start &&
+      !start.moved &&
+      start.pointerType === 'touch' &&
+      start.x > gl.domElement.clientWidth / 2
+    ) {
+      const rotation = islandRef.current.rotation.y;
+      const currentAngle = ((rotation % TWO_PI) + TWO_PI) % TWO_PI;
+      const nextDistance = STAGE_ANGLES
+        .map((angle) => (currentAngle - angle + TWO_PI) % TWO_PI)
+        .filter((distance) => distance > 0.3)
+        .sort((a, b) => a - b)[0];
+
+      if (nextDistance !== undefined) {
+        targetRotation.current = rotation - nextDistance;
+      }
+    }
+    pointerStart.current = null;
     setIsRotating(false);
-  }
+  }, [gl, setIsRotating]);
 
-  const handlePointerMove = (e) => {
+  const handlePointerMove = useCallback((e) => {
     e.stopPropagation();
     e.preventDefault();
+
+    if (pointerStart.current) {
+      const dx = e.clientX - pointerStart.current.x;
+      const dy = e.clientY - pointerStart.current.y;
+      if (Math.hypot(dx, dy) > 6) pointerStart.current.moved = true;
+    }
 
     if(isRotating){
-        const clientX = e.touches
-        ? e.touches[0].clientX 
-        : e.clientX
+        const clientX = e.clientX
 
         const delta = (clientX - lastX.current) / viewport.width
 
@@ -61,31 +101,45 @@ const Island = ({ isRotating, setIsRotating, setCurrentStage, ...props}) => {
         lastX.current = clientX;
         rotationSpeed.current = delta * 0.01 * Math.PI;
     }
-  }
+  }, [isRotating, viewport.width]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     if(e.key === 'ArrowLeft') {
+        onInteraction?.();
         if(!isRotating) setIsRotating(true);
+        targetRotation.current = null;
         islandRef.current.rotation.y += 0.01 * Math.PI;
         rotationSpeed.current = 0.0125;
     }
     else if(e.key === 'ArrowRight') {
+        onInteraction?.();
         if(!isRotating) setIsRotating(true);
+        targetRotation.current = null;
         islandRef.current.rotation.y -= 0.01 * Math.PI;
         rotationSpeed.current = -0.0125;
 
     }
-  }
+  }, [isRotating, onInteraction, setIsRotating]);
   
-  const handleKeyUp = (e) => {
+  const handleKeyUp = useCallback((e) => {
     if(e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         setIsRotating(false);
     } 
-  }
+  }, [setIsRotating]);
   
   // a function from react three fiber which works on every single frame.
   useFrame(() => {
-    if(!isRotating){
+    if (targetRotation.current !== null) {
+        const remaining = targetRotation.current - islandRef.current.rotation.y;
+        if (Math.abs(remaining) < 0.005) {
+          islandRef.current.rotation.y = targetRotation.current;
+          targetRotation.current = null;
+          rotationSpeed.current = 0;
+          setIsRotating(false);
+        } else {
+          islandRef.current.rotation.y += remaining * 0.08;
+        }
+    } else if(!isRotating){
         rotationSpeed.current *= dampingFactor;
         if(Math.abs(rotationSpeed.current) < 0.001) {
             rotationSpeed.current = 0;
@@ -93,30 +147,15 @@ const Island = ({ isRotating, setIsRotating, setCurrentStage, ...props}) => {
 
         islandRef.current.rotation.y += rotationSpeed.current;
     }
-    else {
-      const rotation = islandRef.current.rotation.y;
-      const normalizedRotation =
-      ((rotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+    const rotation = islandRef.current.rotation.y;
+    const normalizedRotation = ((rotation % TWO_PI) + TWO_PI) % TWO_PI;
+    const stageIndex = STAGE_ANGLES.findIndex((angle) => {
+      const difference = Math.abs(normalizedRotation - angle);
+      const circularDifference = Math.min(difference, TWO_PI - difference);
+      return circularDifference <= STAGE_ANGLE_TOLERANCE;
+    });
 
-      // Set the current stage based on the island's orientation
-      switch (true) {
-        case normalizedRotation >= 5.45 && normalizedRotation <= 5.85:
-          setCurrentStage(4);
-          break;
-        case normalizedRotation >= 0.85 && normalizedRotation <= 1.3:
-          setCurrentStage(3);
-          break;
-        case normalizedRotation >= 2.4 && normalizedRotation <= 2.6:
-          setCurrentStage(2);
-          break;
-        case normalizedRotation >= 4.25 && normalizedRotation <= 4.75:
-          setCurrentStage(1);
-          break;
-        default:
-          setCurrentStage(null);
-      } 
-
-    }
+    setCurrentStage(stageIndex === -1 ? null : stageIndex + 1);
   })
 
   useEffect(() => {
@@ -135,7 +174,7 @@ const Island = ({ isRotating, setIsRotating, setCurrentStage, ...props}) => {
         document.removeEventListener('keyup', handleKeyUp);
         
         }
-  },[gl, handlePointerDown,handlePointerUp,handlePointerMove])
+  }, [gl, handlePointerDown, handlePointerUp, handlePointerMove, handleKeyDown, handleKeyUp])
 
   return (
     <a.group ref = {islandRef} {...props} >
