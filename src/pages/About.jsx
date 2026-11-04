@@ -1,3 +1,5 @@
+import veaPhoto from '../assets/images/vea_photo.jfif?url';
+
 const experience = [
   {
     role: 'Analyst, Application Developer',
@@ -71,16 +73,24 @@ const skillGroups = [
 const About = () => {
   return (
     <section className="max-container">
-      <header className="mb-14">
-        <p className="pink-gradient_text font-semibold">A little about me</p>
-        <h1 className="head-text mt-2">Building useful, thoughtful software.</h1>
-        <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700">
-          I’m Vea Banga, a software developer and Computer Science master’s student
-          specializing in Autonomous Systems at Universität Stuttgart. My experience
-          spans frontend development, backend integrations, data dashboards, and
-          process automation. I enjoy working across teams to turn real user needs
-          into reliable, intuitive products.
-        </p>
+      <header className="mb-14 flex flex-col-reverse gap-8 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="pink-gradient_text font-semibold">A little about me</p>
+          <h1 className="head-text mt-2">Building useful, thoughtful software.</h1>
+          <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700">
+            I’m Vea Banga, a software developer and Computer Science master’s student
+            specializing in Autonomous Systems at Universität Stuttgart. My experience
+            spans frontend development, backend integrations, data dashboards, and
+            process automation. I enjoy working across teams to turn real user needs
+            into reliable, intuitive products.
+          </p>
+        </div>
+        <img
+          src={veaPhoto}
+          alt="Vea Banga"
+          className="h-36 w-36 shrink-0 self-center rounded-full object-cover shadow-card sm:h-48 sm:w-48"
+          loading="lazy"
+        />
       </header>
 
       <div className="grid gap-14">
