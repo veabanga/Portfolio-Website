@@ -5,7 +5,7 @@ import { Home, About, Projects, Contact } from './pages';
 const App = () => {
   return (
       <main className='bg-slate-300/20'>
-      <Router>
+      <Router basename={import.meta.env.BASE_URL}>
         <Navbar/>
         <Routes>
           <Route path="/" element={<Home />}/>

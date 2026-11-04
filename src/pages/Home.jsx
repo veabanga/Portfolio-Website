@@ -1,7 +1,8 @@
-import  { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Suspense } from 'react'
 import { Canvas } from '@react-three/fiber'
-import Loader from '../components/Loader'
+import { useProgress } from '@react-three/drei'
+import { HomeLoader } from '../components/Loader'
 import Island, { FIRST_STAGE_ANGLE } from '../models/Island'
 import Sky from '../models/Sky'
 import Plane from '../models/Plane'
@@ -11,15 +12,31 @@ const Home = () => {
   const [isRotating, setIsRotating] = useState(false);
   const [currentStage, setCurrentStage] = useState(1);
   const [showNavigationHint, setShowNavigationHint] = useState(true);
+  const [isSceneReady, setIsSceneReady] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const { active, loaded, total } = useProgress();
 
   const handleInteraction = () => setShowNavigationHint(false);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (!active && total > 0 && loaded >= total) {
+      setIsSceneReady(true);
+    }
+  }, [active, loaded, total]);
 
   const adjustPLaneForScreenSize = () => {
     let screenScale, screenPosition;
 
-    if(window.innerWidth < 768){
-      screenScale = [0.55, 0.55, 0.55];
-      screenPosition = [0.5, -0.8, 2.2];
+    if(isMobile){
+      screenScale = [0.4, 0.4, 0.4];
+      screenPosition = [0.35, -0.15, 1.8];
     } else {
       screenScale = [0.65, 0.65, 0.65];
       screenPosition = [0.8, 0, 2.2];
@@ -30,9 +47,9 @@ const Home = () => {
   const adjustIslandForScreenSize = () => {
     let screenScale, screenPosition;
 
-    if(window.innerWidth < 768){
-      screenScale = [2.5, 2.5, 2.5];
-      screenPosition = [0, -0.5, 0];
+    if(isMobile){
+      screenScale = [1.9, 1.9, 1.9];
+      screenPosition = [0, -0.8, 0];
     } else {
       screenScale = [3, 3, 3];
       screenPosition = [0, -1, 0];
@@ -45,18 +62,20 @@ const Home = () => {
 
   return (
       <section className='w-full h-screen relative'>
-        <div className='pointer-events-none absolute top-28 left-0 right-0 z-10 flex items-center justify-center'>
-          {currentStage && (
-            <Homeinfo
-              currentStage={currentStage}
-              showNavigationHint={showNavigationHint}
-            />
-          )}
-        </div>
+        {isSceneReady && (
+          <div className='pointer-events-none absolute top-40 left-0 right-0 z-10 flex items-center justify-center sm:top-28'>
+            {currentStage && (
+              <Homeinfo
+                currentStage={currentStage}
+                showNavigationHint={showNavigationHint}
+              />
+            )}
+          </div>
+        )}
         <Canvas className={`w-full h-screen bg-transparent ${isRotating ? 'cursor-grabbing' : 'cursor-grab'}`}
         camera={{ near: 0.1, far:20000 }}
         >
-        <Suspense fallback={<Loader />}>
+        <Suspense fallback={null}>
 
           <directionalLight position={ [10, 1, 1]} intensity={[2]} />
           <ambientLight intensity={[0.5]}/>
@@ -84,6 +103,7 @@ const Home = () => {
           />
         </Suspense>
         </Canvas>
+        {!isSceneReady && <HomeLoader />}
       </section>
   );
 };
