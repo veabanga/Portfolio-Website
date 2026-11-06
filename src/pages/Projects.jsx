@@ -5,6 +5,7 @@ const projects = [
     description: 'Fine-tuned a document-understanding model to extract information from complex documents by combining natural language processing and computer vision. Evaluated it on 220 invoice samples against ground truth.',
     outcome: '91% recall · ~90% F1 score',
     technologies: ['Python', 'LayoutLMv3', 'FUNSD', 'NLP', 'Computer vision'],
+    link: 'https://colab.research.google.com/drive/10Gd8H7jx7A6o6LC_zSRpYebVCcORpa-P?usp=sharing',
   },
   {
     name: 'Intern Management System',
@@ -49,6 +50,16 @@ const Projects = () => {
               <span className="text-sm font-semibold text-slate-400">0{index + 1}</span>
             </div>
             <h2 className="text-2xl font-semibold text-slate-900">{project.name}</h2>
+            {project.link && (
+              <a
+                className="mt-2 inline-block font-medium text-pink-600 hover:underline"
+                href={project.link}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Open Google Colab notebook
+              </a>
+            )}
             <p className="mt-4 flex-1 leading-7 text-slate-700">{project.description}</p>
             <p className="mt-5 border-l-2 border-pink-400 pl-3 font-medium leading-6 text-slate-800">{project.outcome}</p>
             <ul className="mt-5 flex flex-wrap gap-2" aria-label={`${project.name} technologies`}>
